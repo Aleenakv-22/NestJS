@@ -6,38 +6,52 @@ import { title } from 'process';
 import { TaskStatus } from './task-status.enum';
 import { GetTasksFilterDto } from './dto/get-tasks-filter.dto';
 import { Op } from 'sequelize';
+import { User } from 'src/auth/user.entity';
 
 @Injectable()
 export class TasksService {
   constructor(@InjectModel(Task) private taskModel: typeof Task) {}
-  async getTaskById(id: string): Promise<Task> {
-    const found = await this.taskModel.findByPk(id);
+  async getTaskById(id: string, user: User): Promise<Task> {
+    const found = await this.taskModel.findOne({
+      where: {
+        id: id,
+        userId: user.id,
+      },
+    });
+
     if (!found) {
       throw new NotFoundException(`Task with ID "${id}" not found`);
     }
+
     return found;
   }
 
-  async getAllTasks(): Promise<Task[]> {
-    return this.taskModel.findAll();
+  async getAllTasks(user: User): Promise<Task[]> {
+    return this.taskModel.findAll({
+      where: { userId: user.id }, // Fetch tasks associated with the user
+    });
   }
-
-  async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
+  async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
     const task = this.taskModel.create({
       title: createTaskDto.title,
       description: createTaskDto.description,
       status: TaskStatus.OPEN,
+      userId: user.id, // Associate the task with the user
     });
     return task;
   }
 
-  async deleteTask(id: string): Promise<void> {
-    const found = await this.getTaskById(id);
-    await this.taskModel.destroy({ where: { id: found.id } });
+  async deleteTask(id: string, user: User): Promise<void> {
+    const found = await this.getTaskById(id, user);
+    await this.taskModel.destroy({ where: { id, userId: user.id } });
   }
 
-  async updateTaskStatus(id: string, status: TaskStatus): Promise<Task> {
-    const task = await this.getTaskById(id);
+  async updateTaskStatus(
+    id: string,
+    status: TaskStatus,
+    user: User,
+  ): Promise<Task> {
+    const task = await this.getTaskById(id, user);
     task.dataValues.status = status;
     // await task.save();
     await this.taskModel.update({ status }, { where: { id } });
@@ -45,7 +59,10 @@ export class TasksService {
     return task;
   }
 
-  async getTasksWithFilters(filterDto: GetTasksFilterDto): Promise<Task[]> {
+  async getTasksWithFilters(
+    filterDto: GetTasksFilterDto,
+    user: User,
+  ): Promise<Task[]> {
     const { status, search } = filterDto;
 
     const where: any = {};
@@ -61,7 +78,7 @@ export class TasksService {
       ];
     }
 
-    return this.taskModel.findAll({ where });
+    return this.taskModel.findAll({ where: { ...where, userId: user.id } });
 
     // Debug: log what you are querying for
     // console.log('DEBUG where:', where);

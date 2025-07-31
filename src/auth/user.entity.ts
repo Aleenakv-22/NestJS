@@ -3,12 +3,14 @@ import {
   Column,
   DataType,
   Default,
+  HasMany,
   Model,
   PrimaryKey,
   Table,
 } from 'sequelize-typescript';
+import { Task } from 'src/tasks/task-entity';
 
-@Table
+@Table({ paranoid: true, timestamps: true })
 export class User extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
@@ -22,4 +24,7 @@ export class User extends Model {
   @AllowNull(false)
   @Column(DataType.STRING)
   declare password: string;
+
+  @HasMany(() => Task)
+  tasks: Task[];
 }

@@ -6,11 +6,14 @@ import {
   Default,
   PrimaryKey,
   Table,
+  ForeignKey,
+  BelongsTo,
 } from 'sequelize-typescript';
 import { TaskStatus } from './task-status.enum';
+import { User } from 'src/auth/user.entity';
+import { Exclude } from 'class-transformer';
 
-// @Table({ paranoid: true, timestamps: true })
-@Table
+@Table({ paranoid: true, timestamps: true })
 export class Task extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
@@ -32,4 +35,12 @@ export class Task extends Model {
     type: DataType.ENUM(...Object.values(TaskStatus)),
   })
   status: TaskStatus;
+
+  @ForeignKey(() => User)
+  @Column({ type: DataType.UUID })
+  userId: string;
+
+  @BelongsTo(() => User)
+  @Exclude({ toPlainOnly: true })
+  user: User;
 }

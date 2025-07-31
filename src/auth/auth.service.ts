@@ -7,10 +7,16 @@ import { User } from './user.entity';
 import { InjectModel } from '@nestjs/sequelize';
 import { AuthCredentialsDto } from 'src/tasks/dto/auth-credentials.dto';
 import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
+import { JwtPayload } from './jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
-  constructor(@InjectModel(User) private userModel: typeof User) {}
+  constructor(
+    @InjectModel(User)
+    private userModel: typeof User,
+    private jwtService: JwtService, // Assuming JwtService is injected for token generation
+  ) {}
 
   async signUp(authCredentialsDto: AuthCredentialsDto): Promise<void> {
     const { username, password } = authCredentialsDto;
@@ -46,14 +52,18 @@ export class AuthService {
       throw error;
     }
   }
-  async signIn(authCredentialsDto: AuthCredentialsDto): Promise<string> {
+  async signIn(
+    authCredentialsDto: AuthCredentialsDto,
+  ): Promise<{ accessToken: string }> {
     const { username, password } = authCredentialsDto;
     try {
       const user = await this.userModel.findOne({ where: { username } });
       console.log('user', user?.password);
       // return usera
       if (user && (await bcrypt.compare(password, user.password))) {
-        return 'Login successful';
+        const payload: JwtPayload = { username: user.username, id: user.id };
+        const accessToken: string = await this.jwtService.sign(payload);
+        return { accessToken };
       } else {
         throw new ConflictException('Invalid credentials');
       }
